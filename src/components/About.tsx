@@ -13,6 +13,29 @@ const About = () => {
     <section id="about" className="py-20 bg-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
+          {/* Image with blob background */}
+          <div className="relative flex justify-center">
+            {/* Animated blob background */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-80 h-80 bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-full animate-pulse"></div>
+              <div className="absolute w-72 h-72 bg-gradient-to-tr from-blue-500/10 to-purple-500/10 rounded-full animate-bounce" style={{ animationDuration: '3s' }}></div>
+              <div className="absolute w-64 h-64 bg-gradient-to-bl from-green-500/10 to-teal-500/10 rounded-full animate-ping" style={{ animationDuration: '4s' }}></div>
+            </div>
+            
+            {/* Profile image */}
+            <div className="relative z-10 w-80 h-80 rounded-full overflow-hidden shadow-2xl border-4 border-yellow-500/30">
+              <img
+                src="/lovable-uploads/e58f206f-896b-406b-8012-73975ac2a63f.png"
+                alt="M. Abdullah - Professional Photographer"
+                className="w-full h-full object-cover object-center"
+              />
+            </div>
+            
+            {/* Floating camera icon
+            <div className="absolute -bottom-6 -right-6 bg-yellow-500 text-slate-900 p-4 rounded-xl shadow-lg z-20 animate-bounce">
+              <Camera className="h-8 w-8" />
+            </div> */}
+          </div>
           {/* Text Content */}
           <div className="space-y-6">
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
@@ -39,29 +62,7 @@ const About = () => {
             </p>
           </div>
           
-          {/* Image with blob background */}
-          <div className="relative flex justify-center">
-            {/* Animated blob background */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-80 h-80 bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-full animate-pulse"></div>
-              <div className="absolute w-72 h-72 bg-gradient-to-tr from-blue-500/10 to-purple-500/10 rounded-full animate-bounce" style={{ animationDuration: '3s' }}></div>
-              <div className="absolute w-64 h-64 bg-gradient-to-bl from-green-500/10 to-teal-500/10 rounded-full animate-ping" style={{ animationDuration: '4s' }}></div>
-            </div>
-            
-            {/* Profile image */}
-            <div className="relative z-10 w-80 h-80 rounded-full overflow-hidden shadow-2xl border-4 border-yellow-500/30">
-              <img
-                src="/lovable-uploads/e58f206f-896b-406b-8012-73975ac2a63f.png"
-                alt="M. Abdullah - Professional Photographer"
-                className="w-full h-full object-cover object-center"
-              />
-            </div>
-            
-            {/* Floating camera icon */}
-            <div className="absolute -bottom-6 -right-6 bg-yellow-500 text-slate-900 p-4 rounded-xl shadow-lg z-20 animate-bounce">
-              <Camera className="h-8 w-8" />
-            </div>
-          </div>
+          
         </div>
         
         {/* Stats */}

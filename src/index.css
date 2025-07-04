@@ -128,3 +128,11 @@
   animation: logo-scroll 60s linear infinite;
 }
 
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
