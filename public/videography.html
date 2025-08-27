@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Snap &amp; Snip – Drive Gallery</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --accent: 174 83% 60%; /* teal */ }
+    html, body { height: 100%; }
+    body { font-family: 'Rajdhani', ui-sans-serif, system-ui; }
+
+    /* --- STARSHIP BACKDROP --- */
+    .bg-starship {
+      position: fixed; inset: 0; z-index: -2;
+      background: radial-gradient(1200px 600px at 70% -10%, rgba(42,255,240,.10), transparent 70%),
+                  radial-gradient(900px 600px at -10% 30%, rgba(0,140,255,.08), transparent 70%),
+                  linear-gradient(180deg, #07080c, #0b0e15 45%, #090b10);
+    }
+    .gridlines::before {
+      content: ""; position: fixed; inset: 0; z-index: -1; pointer-events:none;
+      background:
+        repeating-linear-gradient(transparent 0 28px, rgba(0,255,255,.06) 29px 30px),
+        repeating-linear-gradient(90deg, transparent 0 28px, rgba(0,255,255,.06) 29px 30px);
+      mask: linear-gradient(#000, rgba(0,0,0,.85));
+    }
+    .scanlines::after{
+      content:""; position: fixed; inset:0; pointer-events:none; z-index: 50;
+      background: repeating-linear-gradient(0deg, rgba(255,255,255,0.03), rgba(255,255,255,0.03) 1px, transparent 1px, transparent 3px);
+      mix-blend-mode: overlay; opacity:.35;
+    }
+
+    /* --- HOLO PANELS & NEON --- */
+    .glass {
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,.12);
+      box-shadow: 0 10px 40px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.04) inset;
+    }
+    .neon-ring { box-shadow: 0 0 0 1px hsl(var(--accent)/.35), 0 0 24px hsl(var(--accent)/.25), inset 0 0 24px hsl(var(--accent)/.15); }
+    .neon-text { text-shadow: 0 0 14px hsl(var(--accent)/.65); }
+
+    /* --- GRID --- */
+    .grid-auto-fit { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+    .ig-card { position: relative; overflow: hidden; border-radius: 18px; aspect-ratio: 1 / 1; }
+    .ig-card .frame { position:absolute; inset:0; border:1px solid hsl(var(--accent)/.35); border-radius:18px; }
+    .ig-card img { width:100%; height:100%; object-fit:cover; filter: saturate(1.1) contrast(1.05); transition: transform .35s ease; }
+    .ig-card:hover img { transform: scale(1.06); }
+    .ig-card .sheen{ position:absolute; inset:0; background: linear-gradient(120deg, transparent 45%, rgba(255,255,255,.22) 50%, transparent 55%); transform: translateX(-120%); transition: transform .6s ease; }
+    .ig-card:hover .sheen{ transform: translateX(120%); }
+
+    .badge { position: absolute; left: 10px; top: 10px; background: hsl(var(--accent)/.2); border:1px solid hsl(var(--accent)/.5); color: #eaffff; font-size: 12px; padding: 4px 8px; border-radius: 999px; backdrop-filter: blur(4px); }
+    .overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(0,0,0,.85) 100%); opacity: 0; transition: opacity .25s ease; }
+    .ig-card:hover .overlay { opacity: 1; }
+    .overlay .meta { position: absolute; left: 12px; right: 12px; bottom: 12px; color: #dff; font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
+
+    /* --- MODAL --- */
+    .modal { position: fixed; inset: 0; background: radial-gradient(1200px 800px at 50% 0%, rgba(0,160,255,.15), rgba(0,0,0,.75)); display: none; align-items: center; justify-content: center; z-index: 40; }
+    .modal.open { display: flex; }
+    .modal-card { width: min(96vw, 1120px); border-radius: 16px; overflow: hidden; }
+    .modal-head { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; color:#eaffff; border-bottom:1px solid hsl(var(--accent)/.35); }
+    .ratio { position: relative; width: 100%; padding-top: 56.25%; background:#000; }
+    .ratio iframe, .ratio video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+    /* --- CONTROLS --- */
+    .btn { border:1px solid hsl(var(--accent)/.4); padding:8px 10px; border-radius:10px; color:#eaffff; background: hsl(var(--accent)/.06); transition: all .2s; }
+    .btn:hover { background: hsl(var(--accent)/.12); box-shadow: 0 0 18px hsl(var(--accent)/.35) inset; }
+    .seg { display:inline-flex; border:1px solid hsl(var(--accent)/.4); border-radius:10px; overflow:hidden; }
+    .seg button { padding:8px 10px; background: hsl(var(--accent)/.06); color:#eaffff; }
+    .seg button.active { background: hsl(var(--accent)/.25); }
+
+    /* Accent picker */
+    .swatch { width:28px; height:28px; border-radius:8px; border:1px solid rgba(255,255,255,.2); cursor:pointer; }
+
+    /* Title font */
+    .title { font-family:'Orbitron', sans-serif; letter-spacing: .08em; }
+  </style>
+</head>
+<body class="scanlines gridlines min-h-full text-cyan-50">
+  <div class="bg-starship"></div>
+
+  <!-- HEADER -->
+  <header class="sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 pt-4">
+      <div class="glass neon-ring rounded-2xl px-4 py-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl grid place-items-center title text-[13px] tracking-widest text-cyan-100 neon-ring">S&amp;S</div>
+          <div>
+            <h1 class="title text-xl md:text-2xl neon-text">Snap &amp; Snip</h1>
+            <p class="text-[11px] uppercase tracking-widest text-cyan-300/70">Drive Gallery</p>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 md:gap-3">
+          <div class="relative">
+            <input id="search" type="search" placeholder="Scan: video id…" class="px-3 py-2 rounded-lg bg-black/40 border border-cyan-300/30 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/70 placeholder:text-cyan-200/50 w-56" />
+            <svg class="absolute right-2 top-2.5 w-4 h-4 text-cyan-200/60" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4a6 6 0 014.472 9.928l4.3 4.3-1.415 1.415-4.3-4.3A6 6 0 1110 4zm0 2a4 4 0 100 8 4 4 0 000-8z"/></svg>
+          </div>
+          <div class="flex items-center gap-2 ml-1">
+            <span class="text-[10px] uppercase tracking-widest text-cyan-200/60">Accent</span>
+            <div class="swatch" data-accent="174 83% 60%" style="background:hsl(174 83% 40%)"></div>
+            <div class="swatch" data-accent="199 89% 55%" style="background:hsl(199 89% 45%)"></div>
+            <div class="swatch" data-accent="268 89% 62%" style="background:hsl(268 89% 50%)"></div>
+            <div class="swatch" data-accent="18 92% 62%" style="background:hsl(18 92% 50%)"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- GRID -->
+  <main class="max-w-7xl mx-auto px-4 py-6">
+    <div id="grid" class="grid-auto-fit"></div>
+    <div id="status" class="mt-6 text-xs text-cyan-200/70"></div>
+  </main>
+
+  <!-- MODAL -->
+  <div id="modal" class="modal" role="dialog" aria-modal="true">
+    <div class="modal-card glass neon-ring">
+      <div class="modal-head">
+        <div class="truncate title text-[13px]" id="modalTitle">Drive Video</div>
+        <div class="flex items-center gap-2">
+          <div class="seg">
+            <button id="modeDrive" class="active">Drive</button>
+            <button id="modeHtml5">HTML5</button>
+          </div>
+          <a id="modalDownload" target="_blank" rel="noopener" class="btn">Download</a>
+          <button id="modalCopy" class="btn bg-cyan-300/15">Copy Embed</button>
+          <button id="modalClose" class="btn">Close</button>
+        </div>
+      </div>
+      <div class="p-0">
+        <div class="ratio">
+          <iframe id="playerDrive" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+          <video id="playerHtml5" controls playsinline style="display:none"></video>
+        </div>
+        <div id="fallbackMsg" class="px-4 py-2 text-[12px] text-amber-200 bg-amber-900/30 border-t border-amber-400/30 hidden">Streaming unstable? Toggle <b>HTML5</b>.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+        const RAW_LIST = "https://drive.google.com/file/d/1jVvjtSNX6MvuhcNIf1bZeWUkwSIoC7m_/view https://drive.google.com/file/d/1_F52xq60P0wfl0so-uzrsIlgd47IKY4W/view https://drive.google.com/file/d/1trYJ9leYb-58IMXfjP_c66UOUUG6hhXx/view https://drive.google.com/file/d/1qeR9UEYrwaQctW_gUDhwNsg835TaoAJh/view https://drive.google.com/file/d/1NRxrNxnqEIohc2fludPpVpkdujg3YGSM/view https://drive.google.com/file/d/1vlT2y3Sri30ZqYtHs_CrXNlucTxQbQYj/view https://drive.google.com/file/d/1OPJFOpZsCMUZJmgEA9nZkqb-Fr2t1_29/view https://drive.google.com/file/d/1Ugqh6b1ug-UQ17YeK4d82dQQ3-AnU_ci/view https://drive.google.com/file/d/1PfwvteRbwJhACcaeZrQoCIlPPWxcbmBG/view https://drive.google.com/file/d/1bULQ0v4DAEER_69Yum-L4Hcosm5j2pE/view https://drive.google.com/file/d/1uEDwk1h_6SNuTgb0NvDbsdhCtSug0Cz6/view https://drive.google.com/file/d/1ueJJ0OBgcoNX3dtdFtTVULQzYPhjVjrA/view https://drive.google.com/file/d/1cW2dJeGFV-mmVeKPBfp4D7nQk9NNmp-O/view https://drive.google.com/file/d/1AimvrvZ0BlPwwvwwxQ_Th5RG0UxJQ-Jg/view https://drive.google.com/file/d/1vOf1wnQHdguDvky_HHMe-yzWGPpgSKC8/view https://drive.google.com/file/d/1M1XcrU9xaKpyBh8XjAXbNGagfUNkatG2/view https://drive.google.com/file/d/1dx0nLM5guqKukeGKgxsZsvjCPp2sou1x/view https://drive.google.com/file/d/1EIEW0wAJBquveNZmcLW8k7b7BcQuMdaM/view https://drive.google.com/file/d/1cfXraDhKxbGfcR9AUPskSfgLCtwZhjWk/view https://drive.google.com/file/d/1jWcJ0CbkrIwjQBZmZlRm1574PsvCpbz3/view https://drive.google.com/file/d/1FtwzsnEQDFPqOKfuOQQcHDk6OmPmTP2l/view https://drive.google.com/file/d/1YMYuQpVbAU9_C9K9SGdJBYcxJppU4hGn/view https://drive.google.com/file/d/1r7w-PbMBTR7lvOzqq97iZJ5Pel2tR3PQ/view https://drive.google.com/file/d/1EnX3D0e3KCtRn8WGBYAf7laeVdE3qURr/view https://drive.google.com/file/d/1HcP_4JNq8Mr8pa4T8t-L4QxyJA3KVCVe/view https://drive.google.com/file/d/1OFT5CIq38va7dWxEWoU6NXzywfJlrXVD/view https://drive.google.com/file/d/14yUCjaHHjevmRuwMhwedgxvarsvZzSMI/view https://drive.google.com/file/d/1Wy1bkAUZbgnhj6rOpkPYQo9wme6gSDzd/view https://drive.google.com/file/d/1tnoa-R1Di9WLrpnsz_t9ZMumIrw3lLix/view https://drive.google.com/file/d/1PhrsUol7KDfc_4OlD6QDZ3x7Ngt6MioP/view https://drive.google.com/file/d/1dpt5ikvbZ2_aiyMENVpq_bCFUzGYsvjK/view https://drive.google.com/file/d/12bNYux2_96RaUdP-TI7bCb9UOvuFChKF/view https://drive.google.com/file/d/1j6jzZzyUK-DKFkDLfjGLkgZiArhxIn_G/view https://drive.google.com/file/d/1e86w9SLj2rcdKCkhWxEVraamHxTbMurQ/view https://drive.google.com/file/d/18WRtVGoRO3aag26bcXaL-93j7mpoqwbp/view https://drive.google.com/file/d/1-WeMACx4I3ef6Dy5FpWb59_KbVlifnVS/view https://drive.google.com/file/d/1h31WgXTeOtG99oGeOQeUWxk06f9sEnA9/view https://drive.google.com/file/d/1jgxkMCf_ocA3dsMzLpsHK6xVHlnS6WJe/view https://drive.google.com/file/d/175RhBAE83io40j02RErOp9F3sP4POUNs/view https://drive.google.com/file/d/1U7hqicywVE4I6j6W2Kio4Suby_moPgIi/view https://drive.google.com/file/d/1s5Qfj1eG9a5yCv4mWlw5dCHu1AA-oXwO/view https://drive.google.com/file/d/1fjITALyNpjxAksg6n-yr6WScIL85hGmg/view https://drive.google.com/file/d/1_H-1cPakIz4me5J_Z3uudx6N2zCfemEK/view https://drive.google.com/file/d/1Njw1-OMbhG72DyL6Nv8T6ddBjFk1h65d/view https://drive.google.com/file/d/1j6bO3l56IVSGeb1UXwOrsudfals6qNi9/view https://drive.google.com/file/d/1FDYkMQoGJtMBKENA_5hmqbVz2UxrUy3L/view https://drive.google.com/file/d/11_h523frBkAeZOE27dliVthMD6jkfwMx/view https://drive.google.com/file/d/170UazrOiBu75NovLj_kwTaud35xyMEnT/view https://drive.google.com/file/d/1AtDE-M_5iuSJMtetxaiU_q4MADKH7ovW/view https://drive.google.com/file/d/1xjKSkxJKse4NW8YypsFjRAK7jDREm8n_/view https://drive.google.com/file/d/1WA43ptUbBJUjS8AQs0vji9mCp_jtLXN4/view https://drive.google.com/file/d/1RxM1A05LRoNULKY9ctfBcDDHiKAtEKR1/view https://drive.google.com/file/d/1OiyzpvHfCpjx9MOJAf1288OVOioOT4M-/view https://drive.google.com/file/d/1TtGuVfOQoFfJ3puwkj-AYFh9C0FJ1onm/view https://drive.google.com/file/d/1nZ53tsfTC0U43-SfVyuybvIhjYsbbRMF/view https://drive.google.com/file/d/12wYtBAVaNBf3V0B3uIu8Ad2rCafW0GXq/view https://drive.google.com/file/d/1xo64I0TxbnNyXONGRCTSPfEDFmfm9VxM/view https://drive.google.com/file/d/1IVrFJFlYr8c0s1Plt0tH9VDoo_VqK7So/view https://drive.google.com/file/d/1Mre5DhV90pagzO3SdmZFLg56wZoZt436/view https://drive.google.com/file/d/1FQx9OfBwsUtZtDVQPiT2vMGFsHBgXFJg/view https://drive.google.com/file/d/1ZMGkoOZuxtrQ9bLFJ01xg6Kic5HKcrar/view?usp=drive_link https://drive.google.com/file/d/1uTaWIeQoGq31XupluIgiRtubRSfoeeA5/view?usp=drive_link https://drive.google.com/file/d/1m1xKWZE2oFKn-vCJR54YoGicdGQaB7UU/view?usp=drive_link https://drive.google.com/file/d/1KN6rudB5DlN2fAIQAwDjk827MEuYLSoz/view?usp=drive_link https://drive.google.com/file/d/1nL7klm25G_Hz46WqdxiqAQDERq70WkYh/view?usp=drive_link https://drive.google.com/file/d/1dKiYKi2akHEC97Rc5FzYywJmeSSf_rJf/view?usp=drive_link https://drive.google.com/file/d/1a_dMrIBBzC1ALtqdJ191Zio0DbQ0swze/view?usp=drive_link https://drive.google.com/file/d/1i-jwBdH8wmsyYb2UcctTNjhN1eL7ZeqY/view?usp=drive_link https://drive.google.com/file/d/1RTk5BBSUrOvA7EojAQk8D60-FF6TuNCf/view?usp=drive_link https://drive.google.com/file/d/1OEQ1BfkioHt-O9rXcV1Vp14W0da09iqI/view?usp=drive_link https://drive.google.com/file/d/1sSnP4PWi6wG_9WP2uWt_6Wauf62EEiFD/view?usp=drive_link https://drive.google.com/file/d/1pzYbCEC1ZN5622QjSBRtDUF5_RM2BVa9/view?usp=drive_link https://drive.google.com/file/d/1Pr-ThbLmaiwVrBVH89xP-KZyMMawQvw5/view?usp=drive_link https://drive.google.com/file/d/1ks5xScxv7jd4Ie7gUCWYvZBiOEwjZTGV/view?usp=drive_link";
+
+    // Parse & keep query params
+    const viewLinks = Array.from(new Set(RAW_LIST.split(/\s+/).filter(u => /^https:\/\/drive\.google\.com\/file\//.test(u))));
+    const items = viewLinks.map((url, i) => {
+      let id = null, search = '';
+      try { const u = new URL(url); const m = u.pathname.match(/\/d\/([^/]+)/); id = m?m[1]:null; search = u.search || ''; }
+      catch { const m = url.match(/\/d\/([^/]+)/); id = m?m[1]:null; search = ''; }
+      const qs = search ? (search.startsWith('?') ? '&' + search.slice(1) : '&' + search) : '';
+      return {
+        index: i+1,
+        id,
+        viewUrl: `https://drive.google.com/file/d/${id}/view${search}`,
+        previewUrl: `https://drive.google.com/file/d/${id}/preview${search}`,
+        downloadUrl: `https://drive.google.com/uc?export=download&id=${id}${qs}`,
+        thumb: `https://drive.google.com/thumbnail?id=${id}&sz=w1000${qs}`,
+        label: `#${i+1} · ${id.slice(0,6)}…${id.slice(-4)}`
+      }
+    }).filter(x=>x.id);
+
+    const grid = document.getElementById('grid');
+    function render(list){
+      grid.innerHTML = '';
+      list.forEach(it=>{
+        const card = document.createElement('button');
+        card.className = 'ig-card glass neon-ring group';
+        card.innerHTML = `
+          <span class="frame"></span>
+          <img loading="lazy" src="${it.thumb}" alt="thumbnail" />
+          <div class="sheen"></div>
+          <span class="badge title">${String(it.index).padStart(2,'0')}</span>
+          <div class="overlay">
+            <div class="meta">
+              <span class="truncate">${it.label}</span>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 text-cyan-200"><path d="M8 5v14l11-7z"/></svg>
+            </div>
+          </div>`;
+        card.addEventListener('click', ()=> openModal(it));
+        grid.appendChild(card);
+      })
+    }
+
+    // Modal logic
+    const modal = document.getElementById('modal');
+    const playerDrive = document.getElementById('playerDrive');
+    const playerHtml5 = document.getElementById('playerHtml5');
+    const fallbackMsg = document.getElementById('fallbackMsg');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalDownload = document.getElementById('modalDownload');
+    const modalCopy = document.getElementById('modalCopy');
+    const modalClose = document.getElementById('modalClose');
+    const modeDrive = document.getElementById('modeDrive');
+    const modeHtml5 = document.getElementById('modeHtml5');
+
+    let currentItem = null; let mode = localStorage.getItem('playerMode') || 'drive';
+
+    function applyModeButtons(){
+      modeDrive.classList.toggle('active', mode==='drive');
+      modeHtml5.classList.toggle('active', mode==='html5');
+    }
+    function setPlayer(it){
+      fallbackMsg.classList.add('hidden');
+      if(mode==='drive'){
+        playerHtml5.pause(); playerHtml5.removeAttribute('src'); playerHtml5.style.display='none';
+        playerDrive.style.display='block'; playerDrive.src = it.previewUrl;
+        setTimeout(()=>{ if(modal.classList.contains('open')) fallbackMsg.classList.remove('hidden'); }, 3500);
+      } else {
+        playerDrive.removeAttribute('src'); playerDrive.style.display='none';
+        playerHtml5.style.display='block'; playerHtml5.src = it.downloadUrl; playerHtml5.play().catch(()=>{});
+      }
+      applyModeButtons();
+    }
+    function openModal(it){ currentItem=it; modalTitle.textContent = it.label; modalDownload.href = it.downloadUrl; modal.classList.add('open'); setPlayer(it); }
+    function closeModal(){ playerDrive.removeAttribute('src'); playerHtml5.pause(); playerHtml5.removeAttribute('src'); modal.classList.remove('open'); }
+
+    modalClose.addEventListener('click', closeModal);
+    modal.addEventListener('click', e=>{ if(e.target===modal) closeModal(); });
+    window.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+
+    modeDrive.addEventListener('click', ()=>{ mode='drive'; localStorage.setItem('playerMode',mode); if(currentItem) setPlayer(currentItem); });
+    modeHtml5.addEventListener('click', ()=>{ mode='html5'; localStorage.setItem('playerMode',mode); if(currentItem) setPlayer(currentItem); });
+
+    modalCopy.addEventListener('click', async ()=>{
+      if(!currentItem) return; let code='';
+      if(mode==='drive') code = `<iframe src="${currentItem.previewUrl}" allow="autoplay; encrypted-media" allowfullscreen style="width:100%;height:100%;border:0;"></iframe>`;
+      else code = `<video controls playsinline style="width:100%;height:auto"><source src="${currentItem.downloadUrl}"></video>`;
+      try{ await navigator.clipboard.writeText(code); modalCopy.textContent='Copied'; setTimeout(()=>modalCopy.textContent='Copy Embed',1200);}catch{ alert('Copied embed to clipboard:\n'+code); }
+    });
+
+    // Header controls & search
+    const search = document.getElementById('search');
+    search.addEventListener('input', e=>{ const q=e.target.value.trim().toLowerCase(); render(q? items.filter(it=> it.id.toLowerCase().includes(q)): items); });
+
+    // Accent picker
+    document.querySelectorAll('.swatch').forEach(s=> s.addEventListener('click', ()=>{ const val=s.dataset.accent; document.documentElement.style.setProperty('--accent', val); localStorage.setItem('accent', val);}));
+    const savedAccent = localStorage.getItem('accent'); if(savedAccent) document.documentElement.style.setProperty('--accent', savedAccent);
+
+    // Tests
+    function runTests(){
+      const status=document.getElementById('status');
+      const problems=[]; if(items.length===0) problems.push('Parsed 0 items');
+      const idRe=/^[A-Za-z0-9_-]{10,}$/; if(items.some(it=>!idRe.test(it.id))) problems.push('Invalid IDs present');
+      if(problems.length) status.innerHTML = `<span class="px-2 py-1 rounded bg-red-900/40 text-red-200">Tests failed:</span> ${problems.join(' | ')}`;
+      else status.innerHTML = `<span class="px-2 py-1 rounded bg-emerald-900/30 text-emerald-200">Diagnostics OK</span> • Loaded <b>${items.length}</b> videos • Mode: <b>${mode.toUpperCase()}</b>`;
+    }
+
+    render(items); runTests();
+  </script>
+</body>
+</html>
