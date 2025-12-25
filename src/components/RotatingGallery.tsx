@@ -79,7 +79,7 @@ const RotatingGallery = () => {
                     key={i}
                     src={img}
                     alt={`Gallery ${i}`}
-                    className="h-full w-[16.66%] object-cover opacity-30"
+                    className="h-full w-[16.66%] object-cover opacity-20"
                 />
             ))}
         </div>
