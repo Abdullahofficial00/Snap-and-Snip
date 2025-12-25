@@ -1,5 +1,5 @@
 // ReelViewer.tsx
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { MediaItem } from "../types";
 
 interface ReelViewerProps {
@@ -7,8 +7,18 @@ interface ReelViewerProps {
     startIndex?: number;
 }
 
-const isDrivePreview = (url: string) =>
-    /^https:\/\/drive\.google\.com\/file\/d\/[^/]+\/preview(\?.*)?$/.test(url);
+// 1. Check if it's a Drive URL
+const isDriveUrl = (url: string) =>
+    /drive\.google\.com\/file\/d\/([^/]+)/.test(url);
+
+// 2. Convert to Direct Link for Autoplay
+// WARNING: This uses the /uc?export=download endpoint which has quota limits.
+// It is the only way to get true autoplay for Drive videos.
+const getDriveProxyUrl = (url: string) => {
+    const match = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+    if (!match || !match[1]) return url;
+    return `https://drive.google.com/uc?export=download&id=${match[1]}`;
+};
 
 export const ReelViewer: React.FC<ReelViewerProps> = ({
     items,
@@ -39,78 +49,127 @@ export const ReelViewer: React.FC<ReelViewerProps> = ({
             className="h-full w-full overflow-y-scroll snap-y snap-mandatory hide-scrollbar"
         >
             {items.map((reel, idx) => (
-                <ReelItem key={String(reel.id)} reel={reel} isActive={activeIndex === idx} />
+                <ReelItem
+                    key={String(reel.id)}
+                    reel={reel}
+                    isActive={activeIndex === idx}
+                    shouldLoad={idx >= activeIndex - 1 && idx <= activeIndex + 2} // Load 1 behind, 2 ahead
+                />
             ))}
         </div>
     );
 };
 
-const ReelItem: React.FC<{ reel: MediaItem; isActive: boolean }> = ({
+const ReelItem: React.FC<{ reel: MediaItem; isActive: boolean; shouldLoad: boolean }> = ({
     reel,
     isActive,
+    shouldLoad,
 }) => {
-    const isDrive = useMemo(() => isDrivePreview(reel.url), [reel.url]);
-
-    // HTML5 player (for non-drive sources)
     const videoRef = useRef<HTMLVideoElement>(null);
 
-    useEffect(() => {
-        if (isDrive) return; // iframe handles itself
+    // Determine if it is a Drive link
+    const isDrive = useMemo(() => isDriveUrl(reel.url), [reel.url]);
+    // Get the direct stream URL if it is Drive, otherwise use original
+    const videoSrc = useMemo(() => isDrive ? getDriveProxyUrl(reel.url) : reel.url, [reel.url, isDrive]);
 
+    const [isBuffering, setIsBuffering] = useState(true); // Default to true so it shows initially
+
+    // HTML5 autoplay on active
+    useEffect(() => {
         const v = videoRef.current;
         if (!v) return;
 
         if (isActive) {
+            v.currentTime = 0;
+            setIsBuffering(true); // Show loader when starting
+            const playPromise = v.play();
+            if (playPromise !== undefined) {
+                playPromise.catch((error) => {
+                    console.error("Autoplay prevented:", error);
+                });
+            }
+        } else {
+            v.pause();
+            setIsBuffering(false); // Hide loader when paused/off-screen
+        }
+    }, [isActive]);
+
+    const togglePlay = () => {
+        const v = videoRef.current;
+        if (!v) return;
+        if (v.paused) {
             v.play().catch(() => { });
         } else {
             v.pause();
         }
-    }, [isActive, isDrive]);
-
-    // ✅ On click: start playing immediately, no play icon overlay
-    const handleTapToPlay = () => {
-        if (isDrive) return; // Drive iframe handles click-to-play inside player
-        const v = videoRef.current;
-        if (!v) return;
-        v.play().catch(() => { });
     };
 
     return (
         <div className="h-full w-full snap-start relative flex items-center justify-center bg-zinc-950 overflow-hidden">
-            {/* Background Blur */}
+            {/* Background blur */}
             <div className="absolute inset-0 opacity-30 blur-3xl scale-150">
-                <img src={reel.thumbnail} alt="" className="w-full h-full object-cover" />
+                <img
+                    src={reel.thumbnail}
+                    alt=""
+                    className="w-full h-full object-cover"
+                />
             </div>
 
-            {/* Reel Card */}
-            <div className="relative z-10 w-full max-w-[450px] aspect-[9/16] bg-black shadow-2xl rounded-2xl overflow-hidden">
-                {/* ✅ PLAYER */}
-                {isDrive ? (
-                    // ✅ Only mount iframe for the active reel (faster + less load)
-                    isActive ? (
-                        <iframe
-                            src={reel.url}
-                            className="w-full h-full"
-                            allow="autoplay; encrypted-media"
-                            allowFullScreen
+            <div className="relative z-10 w-full max-w-[450px] aspect-[9/16] bg-black shadow-2xl rounded-2xl overflow-hidden group">
+                {shouldLoad ? (
+                    <>
+                        <video
+                            ref={videoRef}
+                            src={videoSrc}
+                            className={`w-full h-full object-cover transition-all duration-500 transform ${isBuffering ? "blur-xl scale-110" : "blur-0 scale-100"
+                                }`}
+                            playsInline
+                            muted
+                            preload="auto"
+                            loop
+                            poster={reel.thumbnail}
+                            onClick={togglePlay}
+                            onWaiting={() => setIsBuffering(true)}
+                            onPlaying={() => setIsBuffering(false)}
+                            onCanPlay={() => setIsBuffering(false)}
+                            onError={(e) => console.error("Video load error:", e)}
                         />
-                    ) : (
-                        <img
-                            src={reel.thumbnail}
-                            alt=""
-                            className="w-full h-full object-cover"
-                        />
-                    )
+
+                        {/* Camera Style Loading Indicator */}
+                        {isBuffering && (
+                            <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-20">
+                                {/* Dim background slightly */}
+                                <div className="absolute inset-0 bg-black/20" />
+
+                                {/* Camera Viewfinder Frame */}
+                                <div className="relative w-24 h-24 opacity-80 animate-pulse">
+                                    {/* Top Left Corner */}
+                                    <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-white rounded-tl-sm" />
+                                    {/* Top Right Corner */}
+                                    <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-white rounded-tr-sm" />
+                                    {/* Bottom Left Corner */}
+                                    <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-white rounded-bl-sm" />
+                                    {/* Bottom Right Corner */}
+                                    <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-white rounded-br-sm" />
+
+                                    {/* Center Focus Crosshair */}
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="w-1 h-1 bg-red-500 rounded-full animate-ping" />
+                                    </div>
+                                </div>
+
+                                {/* Loading Text */}
+                                <div className="absolute mt-32 font-mono text-xs text-white/80 tracking-[0.2em] uppercase">
+                                    REC [///...]
+                                </div>
+                            </div>
+                        )}
+                    </>
                 ) : (
-                    <video
-                        ref={videoRef}
-                        src={reel.url}
+                    <img
+                        src={reel.thumbnail}
+                        alt="Thumbnail"
                         className="w-full h-full object-cover"
-                        playsInline
-                        muted
-                        preload="auto"
-                        loop
-                        onClick={handleTapToPlay}
                     />
                 )}
             </div>
