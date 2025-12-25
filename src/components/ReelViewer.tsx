@@ -60,7 +60,7 @@ export const ReelViewer: React.FC<ReelViewerProps> = ({
                     key={String(reel.id)}
                     reel={reel}
                     isActive={activeIndex === idx}
-                    shouldLoad={idx >= activeIndex - 1 && idx <= activeIndex + 2} // Load 1 behind, 2 ahead
+                    shouldLoad={Math.abs(idx - activeIndex) <= 1} // Only load current and neighbors
                 />
             ))}
         </div>
@@ -184,7 +184,7 @@ const ReelItem: React.FC<{ reel: MediaItem; isActive: boolean; shouldLoad: boole
                                     }`}
                                 playsInline
                                 muted
-                                preload="auto"
+                                preload={isActive ? "auto" : "none"}
                                 loop
                                 poster={reel.thumbnail}
                                 // @ts-ignore
